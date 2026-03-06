@@ -45,24 +45,6 @@ const FIELD_CONFIG = [
   },
 ]
 
-function Toggle({ checked, onChange }) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors ${
-        checked ? 'bg-amber-500' : 'bg-gray-300'
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-          checked ? 'translate-x-5' : 'translate-x-1'
-        }`}
-      />
-    </button>
-  )
-}
-
 export default function SettingsPanel() {
   const { settings, updateSettings, resetSettings } = useSettingsStore()
 
@@ -89,107 +71,105 @@ export default function SettingsPanel() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">
+      <h2 className="text-2xl font-bold text-base-content mb-6">
         Configuración de Reglas
       </h2>
 
-      <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-        <div className="flex gap-3">
-          <span className="text-red-500 text-xl leading-none mt-0.5">!</span>
-          <div>
-            <p className="font-semibold text-red-800">
-              Advertencia Legal
-            </p>
-            <p className="text-sm text-red-700 mt-1">
-              Las reglas y parámetros configurados en esta sección están basados
-              en la legislación laboral vigente en Chile. Omitir o modificar
-              estas reglas puede generar incumplimientos legales que deriven en
-              sanciones, multas o demandas laborales. Se recomienda
-              encarecidamente respetar los valores por defecto y consultar con
-              un asesor legal antes de realizar cambios.
-            </p>
-          </div>
+      <div className="alert alert-soft alert-error mb-6" role="alert">
+        <span className="icon-[tabler--alert-triangle] size-6" />
+        <div>
+          <h5 className="text-lg font-semibold">Advertencia Legal</h5>
+          <p className="text-sm mt-1">
+            Las reglas y parámetros configurados en esta sección están basados
+            en la legislación laboral vigente en Chile. Omitir o modificar
+            estas reglas puede generar incumplimientos legales que deriven en
+            sanciones, multas o demandas laborales. Se recomienda
+            encarecidamente respetar los valores por defecto y consultar con
+            un asesor legal antes de realizar cambios.
+          </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-1">
-        <div className="flex items-center justify-between p-3 mb-4 bg-amber-50 rounded-lg border border-amber-200">
-          <div>
-            <p className="font-semibold text-amber-800 text-sm">
-              Omitir todas las reglas
-            </p>
-            <p className="text-xs text-amber-600">
-              Activa/desactiva todas las validaciones a la vez
-            </p>
-          </div>
-          <Toggle
-            checked={Object.values(settings.omitirReglas).every(Boolean)}
-            onChange={toggleAll}
-          />
-        </div>
-
-        {FIELD_CONFIG.map(({ key, label, type, isLegal }) => (
-          <div
-            key={key}
-            className={`flex items-center justify-between gap-4 p-3 rounded-lg ${
-              settings.omitirReglas[key] ? 'bg-amber-50/50' : ''
-            }`}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {label}
-                </label>
-                {isLegal && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium uppercase tracking-wide">
-                    Legal
-                  </span>
-                )}
-              </div>
-              {settings.omitirReglas[key] && (
-                <p className="text-xs text-amber-600 mt-0.5">
-                  Esta regla no se aplicará al generar turnos
+      <div className="card">
+        <div className="card-body gap-4">
+          <div className="alert alert-soft alert-warning" role="alert">
+            <div className="flex items-center justify-between w-full">
+              <div>
+                <p className="font-semibold text-sm">Omitir todas las reglas</p>
+                <p className="text-xs opacity-80">
+                  Activa/desactiva todas las validaciones a la vez
                 </p>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
+              </div>
               <input
-                type={type}
-                value={settings[key]}
-                onChange={(e) =>
-                  updateSettings({ [key]: parseInt(e.target.value) || 0 })
-                }
-                disabled={settings.omitirReglas[key]}
-                className={`w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-center text-sm focus:ring-2 focus:ring-primary focus:border-primary ${
-                  settings.omitirReglas[key]
-                    ? 'bg-gray-100 text-gray-400'
-                    : ''
-                }`}
-              />
-              <Toggle
-                checked={settings.omitirReglas[key]}
-                onChange={() => toggleRule(key)}
+                type="checkbox"
+                className="switch switch-warning"
+                checked={Object.values(settings.omitirReglas).every(Boolean)}
+                onChange={toggleAll}
               />
             </div>
           </div>
-        ))}
 
-        {anyRuleOmitted && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-xs text-amber-700">
-              Tienes reglas omitidas. El algoritmo ignorará esas validaciones al
-              generar la planificación. Usa esta opción bajo tu propia
-              responsabilidad.
-            </p>
+          <div className="divide-y divide-base-content/10">
+            {FIELD_CONFIG.map(({ key, label, type, isLegal }) => (
+              <div
+                key={key}
+                className={`flex items-center justify-between gap-4 py-3 ${
+                  settings.omitirReglas[key] ? 'opacity-60' : ''
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-base-content">
+                      {label}
+                    </span>
+                    {isLegal && (
+                      <span className="badge badge-soft badge-info badge-xs">
+                        Legal
+                      </span>
+                    )}
+                  </div>
+                  {settings.omitirReglas[key] && (
+                    <p className="text-xs text-warning mt-0.5">
+                      Esta regla no se aplicará al generar turnos
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    type={type}
+                    value={settings[key]}
+                    onChange={(e) =>
+                      updateSettings({ [key]: parseInt(e.target.value) || 0 })
+                    }
+                    disabled={settings.omitirReglas[key]}
+                    className="input input-sm w-20 text-center"
+                  />
+                  <input
+                    type="checkbox"
+                    className="switch switch-warning switch-sm"
+                    checked={settings.omitirReglas[key]}
+                    onChange={() => toggleRule(key)}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
-        )}
 
-        <button
-          onClick={resetSettings}
-          className="w-full mt-4 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
-        >
-          Restablecer valores por defecto
-        </button>
+          {anyRuleOmitted && (
+            <div className="alert alert-soft alert-warning" role="alert">
+              <span className="icon-[tabler--info-circle] size-5" />
+              <p className="text-xs">
+                Tienes reglas omitidas. El algoritmo ignorará esas validaciones al
+                generar la planificación. Usa esta opción bajo tu propia
+                responsabilidad.
+              </p>
+            </div>
+          )}
+
+          <button onClick={resetSettings} className="btn btn-soft btn-secondary btn-block">
+            Restablecer valores por defecto
+          </button>
+        </div>
       </div>
     </div>
   )

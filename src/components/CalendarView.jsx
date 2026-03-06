@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { addMonths, format } from 'date-fns'
+import { addMonths } from 'date-fns'
 import { useScheduleStore } from '../store/useScheduleStore'
 import { useStaffStore } from '../store/useStaffStore'
 import { useSettingsStore } from '../store/useSettingsStore'
@@ -92,7 +92,7 @@ export default function CalendarView() {
 
     holidays.forEach((h) => {
       evts.push({
-        title: `🎉 ${h.title}`,
+        title: h.title,
         start: h.date,
         allDay: true,
         display: 'background',
@@ -106,48 +106,40 @@ export default function CalendarView() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
+        <h2 className="text-2xl font-bold text-base-content">
           Calendario de Planificación
         </h2>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             onClick={handleGenerate}
             disabled={loading}
-            className="px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium disabled:opacity-50"
+            className="btn btn-primary btn-sm"
           >
+            {loading && <span className="loading loading-spinner loading-xs" />}
             {loading ? 'Generando...' : 'Generar Planificación Mensual'}
           </button>
-          <button
-            onClick={handleExport}
-            className="px-4 py-2.5 bg-success text-white rounded-lg hover:opacity-90 transition font-medium"
-          >
+          <button onClick={handleExport} className="btn btn-soft btn-success btn-sm">
+            <span className="icon-[tabler--download] size-4" />
             Descargar Excel
           </button>
         </div>
       </div>
 
       {pendingSchedule && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
-          <div>
-            <p className="font-semibold text-blue-800">
-              Propuesta de planificación generada
-            </p>
-            <p className="text-sm text-blue-600">
+        <div className="alert alert-soft alert-info mb-4" role="alert">
+          <span className="icon-[tabler--clipboard-check] size-6" />
+          <div className="flex-1">
+            <h5 className="font-semibold">Propuesta de planificación generada</h5>
+            <p className="text-sm">
               {pendingSchedule.length} turnos asignados para el mes siguiente.
               Revisa y confirma o rechaza.
             </p>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={confirmSchedule}
-              className="px-4 py-2 bg-success text-white rounded-lg hover:opacity-90 transition font-medium"
-            >
+          <div className="flex gap-2">
+            <button onClick={confirmSchedule} className="btn btn-success btn-sm">
               Confirmar
             </button>
-            <button
-              onClick={rejectSchedule}
-              className="px-4 py-2 bg-danger text-white rounded-lg hover:opacity-90 transition font-medium"
-            >
+            <button onClick={rejectSchedule} className="btn btn-error btn-sm">
               Rechazar
             </button>
           </div>
@@ -155,13 +147,16 @@ export default function CalendarView() {
       )}
 
       {warnings.length > 0 && (
-        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <p className="font-semibold text-amber-800 mb-2">Advertencias:</p>
-          <ul className="text-sm text-amber-700 space-y-1">
-            {warnings.map((w, i) => (
-              <li key={i}>- {w}</li>
-            ))}
-          </ul>
+        <div className="alert alert-soft alert-warning mb-4" role="alert">
+          <span className="icon-[tabler--alert-triangle] size-5" />
+          <div>
+            <p className="font-semibold mb-1">Advertencias:</p>
+            <ul className="text-sm space-y-0.5">
+              {warnings.map((w, i) => (
+                <li key={i}>- {w}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
@@ -170,10 +165,8 @@ export default function CalendarView() {
           {staff.map((m) => (
             <span
               key={m.id}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white"
-              style={{
-                backgroundColor: staffColorMap[m.id] || '#6b7280',
-              }}
+              className="badge badge-sm text-white"
+              style={{ backgroundColor: staffColorMap[m.id] || '#6b7280' }}
             >
               {m.nombre}
             </span>
@@ -181,25 +174,27 @@ export default function CalendarView() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek',
-          }}
-          locale="es"
-          events={events}
-          height="auto"
-          firstDay={1}
-          buttonText={{
-            today: 'Hoy',
-            month: 'Mes',
-            week: 'Semana',
-          }}
-        />
+      <div className="card">
+        <div className="card-body">
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek',
+            }}
+            locale="es"
+            events={events}
+            height="auto"
+            firstDay={1}
+            buttonText={{
+              today: 'Hoy',
+              month: 'Mes',
+              week: 'Semana',
+            }}
+          />
+        </div>
       </div>
     </div>
   )

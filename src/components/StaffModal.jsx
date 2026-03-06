@@ -98,203 +98,172 @@ export default function StaffModal({ isOpen, onClose, onSave, member }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-800">
+    <div className="overlay overlay-open:opacity-100 modal" style={{ display: 'flex', opacity: 1 }} role="dialog">
+      <div className="modal-dialog modal-dialog-sm">
+        <div className="modal-content max-h-[90vh] overflow-y-auto">
+          <div className="modal-header">
+            <h3 className="modal-title">
               {member ? 'Editar' : 'Nuevo'} Colaborador
             </h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-            >
-              &times;
+            <button type="button" className="btn btn-text btn-circle btn-sm" onClick={onClose}>
+              <span className="icon-[tabler--x] size-4" />
             </button>
           </div>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body space-y-4">
+              <div>
+                <label className="label-text mb-1">Nombre</label>
+                <input
+                  type="text"
+                  className="input w-full"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  required
+                />
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombre
-              </label>
-              <input
-                type="text"
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
+              <div>
+                <label className="label-text mb-1">Rol</label>
+                <input
+                  type="text"
+                  className="input w-full"
+                  value={form.rol}
+                  onChange={(e) => setForm({ ...form, rol: e.target.value })}
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Rol
-              </label>
-              <input
-                type="text"
-                value={form.rol}
-                onChange={(e) => setForm({ ...form, rol: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-              />
-            </div>
+              <div>
+                <label className="label-text mb-1">Horas contrato semanal</label>
+                <input
+                  type="number"
+                  className="input w-full"
+                  value={form.horasContrato}
+                  onChange={(e) =>
+                    setForm({ ...form, horasContrato: parseInt(e.target.value) || 0 })
+                  }
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Horas contrato semanal
-              </label>
-              <input
-                type="number"
-                value={form.horasContrato}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    horasContrato: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-              />
-            </div>
+              <div>
+                <label className="label-text mb-2">Turnos asignados</label>
+                {shifts.length === 0 ? (
+                  <div className="alert alert-soft alert-info" role="alert">
+                    <span className="icon-[tabler--info-circle] size-4" />
+                    <p className="text-sm">No hay turnos creados. Ve a la pestaña Turnos para crear algunos.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {shifts.map((shift) => {
+                      const isSelected = form.turnosAsignados.includes(shift.id)
+                      return (
+                        <label
+                          key={shift.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                            isSelected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-base-content/10 hover:border-base-content/20'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-primary checkbox-sm"
+                            checked={isSelected}
+                            onChange={() => toggleShift(shift.id)}
+                          />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-base-content">
+                              {shift.nombre}
+                            </span>
+                            <span className="text-xs text-base-content/50 ml-2">
+                              {String(shift.horaInicio).padStart(2, '0')}:00 -{' '}
+                              {String(shift.horaFin).padStart(2, '0')}:00 ({shift.horas}h)
+                            </span>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+                {form.turnosAsignados.length === 0 && shifts.length > 0 && (
+                  <p className="helper-text mt-1">
+                    Si no seleccionas ninguno, podrá ser asignado a cualquier turno.
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Turnos asignados
-              </label>
-              {shifts.length === 0 ? (
-                <p className="text-sm text-gray-400 p-3 bg-gray-50 rounded-lg">
-                  No hay turnos creados. Ve a la pestaña Turnos para crear
-                  algunos.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {shifts.map((shift) => {
-                    const isSelected = form.turnosAsignados.includes(shift.id)
-                    return (
-                      <label
-                        key={shift.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
-                          isSelected
-                            ? 'border-primary bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleShift(shift.id)}
-                          className="h-4 w-4 rounded"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-gray-800">
-                            {shift.nombre}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {String(shift.horaInicio).padStart(2, '0')}:00 -{' '}
-                            {String(shift.horaFin).padStart(2, '0')}:00 (
-                            {shift.horas}h)
-                          </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="esUniversitario"
+                  className="checkbox checkbox-primary checkbox-sm"
+                  checked={form.esUniversitario}
+                  onChange={(e) =>
+                    setForm({ ...form, esUniversitario: e.target.checked })
+                  }
+                />
+                <label htmlFor="esUniversitario" className="label-text">
+                  Perfil universitario (requiere disponibilidad horaria)
+                </label>
+              </div>
+
+              {form.esUniversitario && (
+                <div className="card card-border card-sm">
+                  <div className="card-body">
+                    <p className="text-sm font-medium text-base-content mb-2">
+                      Disponibilidad horaria
+                    </p>
+                    {DAYS.map(({ key, label }) => {
+                      const dayAvail = form.disponibilidad.find((d) => d.dia === key)
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-center gap-3 py-2 border-b border-base-content/5 last:border-0"
+                        >
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-sm checkbox-primary"
+                            checked={!!dayAvail}
+                            onChange={() => toggleDay(key)}
+                          />
+                          <span className="w-24 text-sm">{label}</span>
+                          {dayAvail && (
+                            <>
+                              <input
+                                type="number"
+                                min="0"
+                                max="23"
+                                className="input input-sm w-16 text-center"
+                                value={dayAvail.inicio}
+                                onChange={(e) =>
+                                  handleAvailabilityChange(key, 'inicio', e.target.value)
+                                }
+                              />
+                              <span className="text-sm text-base-content/50">a</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="24"
+                                className="input input-sm w-16 text-center"
+                                value={dayAvail.fin}
+                                onChange={(e) =>
+                                  handleAvailabilityChange(key, 'fin', e.target.value)
+                                }
+                              />
+                              <span className="text-sm text-base-content/50">hrs</span>
+                            </>
+                          )}
                         </div>
-                      </label>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
               )}
-              {form.turnosAsignados.length === 0 && shifts.length > 0 && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Si no seleccionas ninguno, el colaborador podrá ser asignado a
-                  cualquier turno.
-                </p>
-              )}
             </div>
-
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <input
-                type="checkbox"
-                id="esUniversitario"
-                checked={form.esUniversitario}
-                onChange={(e) =>
-                  setForm({ ...form, esUniversitario: e.target.checked })
-                }
-                className="h-4 w-4 rounded"
-              />
-              <label htmlFor="esUniversitario" className="text-sm text-blue-800">
-                Perfil universitario (requiere disponibilidad horaria)
-              </label>
-            </div>
-
-            {form.esUniversitario && (
-              <div className="border border-gray-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-gray-700 mb-3">
-                  Disponibilidad horaria
-                </p>
-                {DAYS.map(({ key, label }) => {
-                  const dayAvail = form.disponibilidad.find(
-                    (d) => d.dia === key
-                  )
-                  return (
-                    <div
-                      key={key}
-                      className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!!dayAvail}
-                        onChange={() => toggleDay(key)}
-                        className="h-4 w-4"
-                      />
-                      <span className="w-24 text-sm">{label}</span>
-                      {dayAvail && (
-                        <>
-                          <input
-                            type="number"
-                            min="0"
-                            max="23"
-                            value={dayAvail.inicio}
-                            onChange={(e) =>
-                              handleAvailabilityChange(
-                                key,
-                                'inicio',
-                                e.target.value
-                              )
-                            }
-                            className="w-16 px-2 py-1 border rounded text-center text-sm"
-                          />
-                          <span className="text-sm text-gray-500">a</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="24"
-                            value={dayAvail.fin}
-                            onChange={(e) =>
-                              handleAvailabilityChange(
-                                key,
-                                'fin',
-                                e.target.value
-                              )
-                            }
-                            className="w-16 px-2 py-1 border rounded text-center text-sm"
-                          />
-                          <span className="text-sm text-gray-500">hrs</span>
-                        </>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
-              >
+            <div className="modal-footer">
+              <button type="button" className="btn btn-soft btn-secondary" onClick={onClose}>
                 Cancelar
               </button>
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium"
-              >
+              <button type="submit" className="btn btn-primary">
                 {member ? 'Guardar cambios' : 'Agregar'}
               </button>
             </div>

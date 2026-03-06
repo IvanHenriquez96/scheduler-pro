@@ -5,39 +5,42 @@ import ShiftList from './components/ShiftList'
 import CalendarView from './components/CalendarView'
 
 const TABS = [
-  { id: 'calendar', label: 'Calendario' },
-  { id: 'shifts', label: 'Turnos' },
-  { id: 'staff', label: 'Staff' },
-  { id: 'settings', label: 'Configuración' },
+  { id: 'calendar', label: 'Calendario', icon: 'icon-[tabler--calendar]' },
+  { id: 'shifts', label: 'Turnos', icon: 'icon-[tabler--clock]' },
+  { id: 'staff', label: 'Staff', icon: 'icon-[tabler--users]' },
+  { id: 'settings', label: 'Configuración', icon: 'icon-[tabler--settings]' },
 ]
 
 function App() {
   const [activeTab, setActiveTab] = useState('calendar')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-800">
-            <span className="text-primary">Scheduler</span> Pro
-          </h1>
-          <nav className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+    <div className="min-h-screen bg-base-200/50">
+      <nav className="navbar bg-base-100 shadow-sm">
+        <div className="navbar-start">
+          <a className="link text-base-content link-neutral text-xl font-bold no-underline">
+            Scheduler <span className="text-primary">Pro</span>
+          </a>
+        </div>
+        <div className="navbar-end">
+          <div className="flex gap-1">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium rounded-md transition ${
+                className={`btn btn-sm ${
                   activeTab === tab.id
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'btn-primary'
+                    : 'btn-soft btn-secondary'
                 }`}
               >
-                {tab.label}
+                <span className={`${tab.icon} size-4`} />
+                <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
-          </nav>
+          </div>
         </div>
-      </header>
+      </nav>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {activeTab === 'calendar' && <CalendarView />}
