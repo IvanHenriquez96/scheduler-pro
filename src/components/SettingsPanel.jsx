@@ -21,7 +21,13 @@ const FIELD_CONFIG = [
   },
   {
     key: 'minColaboradoresPorDia',
-    label: 'Mín. colaboradores por turno',
+    label: 'Mín. colaboradores por día',
+    type: 'number',
+    isLegal: false,
+  },
+  {
+    key: 'maxColaboradoresPorDia',
+    label: 'Máx. colaboradores por día',
     type: 'number',
     isLegal: false,
   },

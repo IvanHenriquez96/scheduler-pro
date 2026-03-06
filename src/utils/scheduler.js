@@ -9,6 +9,7 @@ import {
   format,
   isSameMonth,
   parseISO,
+  startOfWeek,
 } from 'date-fns'
 import { FULLTIME_SHIFT_ID } from '../store/useShiftsStore'
 
@@ -21,6 +22,32 @@ const DAY_NAMES = [
   'viernes',
   'sabado',
 ]
+
+const DAY_LABELS = [
+  'Domingo',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+]
+
+/** Fisher-Yates shuffle */
+function shuffle(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+function getTotalHoursAssigned(staffId, assignments) {
+  return assignments
+    .filter((a) => a.staffId === staffId)
+    .reduce((sum, a) => sum + a.hours, 0)
+}
 
 function getTotalDaysAssigned(staffId, assignments) {
   const uniqueDays = new Set(
@@ -89,6 +116,13 @@ function canWorkShift(member, shift, fulltimeShiftId) {
   return member.turnosAsignados.includes(shift.id)
 }
 
+/** Estimate total monthly hours a staff member can work */
+function getMonthlyCapacity(member, settings, totalDays) {
+  const weeklyHours = member.horasContrato || settings.maxHorasSemanales
+  const weeks = totalDays / 7
+  return weeklyHours * weeks
+}
+
 export function generateSchedule(staff, settings, holidays, targetMonth, shifts) {
   const year = targetMonth.getFullYear()
   const month = targetMonth.getMonth()
@@ -101,21 +135,53 @@ export function generateSchedule(staff, settings, holidays, targetMonth, shifts)
   const warnings = []
   const omit = settings.omitirReglas || {}
 
+  // Track which staff members are depleted (no more hours available)
+  const depletedStaff = new Set()
+
+  // Group days by week (weekStartsOn: Monday = 1)
+  const weekMap = new Map()
   for (const day of days) {
+    const weekKey = format(startOfWeek(day, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    if (!weekMap.has(weekKey)) weekMap.set(weekKey, [])
+    weekMap.get(weekKey).push(day)
+  }
+
+  // Process weeks in chronological order, but randomize day order within each week.
+  // This distributes days off randomly across all 7 days instead of always
+  // leaving the same day(s) uncovered.
+  const sortedWeeks = [...weekMap.keys()].sort()
+  const processedDays = []
+  for (const weekKey of sortedWeeks) {
+    const weekDays = weekMap.get(weekKey)
+    processedDays.push(...shuffle(weekDays))
+  }
+
+  for (const day of processedDays) {
     const dateStr = format(day, 'yyyy-MM-dd')
     const dayOfWeek = getDay(day)
     const isHoliday = holidayDates.has(dateStr)
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
 
-    const sorted = [...staff].sort((a, b) => {
+    // Shuffle staff randomly, then sort by least days assigned for fairness.
+    // The initial shuffle ensures random tiebreaking when days are equal.
+    const shuffled = shuffle(staff)
+    const sorted = shuffled.sort((a, b) => {
       const aDays = getTotalDaysAssigned(a.id, assignments)
       const bDays = getTotalDaysAssigned(b.id, assignments)
-      if (aDays !== bDays) return aDays - bDays
-      return Math.random() - 0.5
+      return aDays - bDays
     })
+
     let assignedToday = 0
 
+    const maxPerDay = settings.maxColaboradoresPorDia || Infinity
+
     for (const member of sorted) {
+      // Skip depleted staff
+      if (depletedStaff.has(member.id)) continue
+
+      // Stop if we reached the max collaborators for this day
+      if (!omit.maxColaboradoresPorDia && assignedToday >= maxPerDay) break
+
       const eligibleShifts = shifts.filter((shift) => {
         if (shift.tipo === 'weekends' && !isWeekend && !isHoliday) return false
         if (!canWorkShift(member, shift, FULLTIME_SHIFT_ID)) return false
@@ -167,9 +233,18 @@ export function generateSchedule(staff, settings, holidays, targetMonth, shifts)
         return true
       })
 
-      if (eligibleShifts.length === 0) continue
+      if (eligibleShifts.length === 0) {
+        // Check if this member is fully depleted for the month
+        const monthlyCapacity = getMonthlyCapacity(member, settings, days.length)
+        const totalUsed = getTotalHoursAssigned(member.id, assignments)
+        if (totalUsed >= monthlyCapacity) {
+          depletedStaff.add(member.id)
+        }
+        continue
+      }
 
-      const shift = eligibleShifts[0]
+      // Pick a random eligible shift instead of always the first one
+      const shift = eligibleShifts[Math.floor(Math.random() * eligibleShifts.length)]
       const shiftStart = new Date(day)
       shiftStart.setHours(shift.horaInicio, 0, 0, 0)
       const shiftEnd = new Date(day)
@@ -191,16 +266,38 @@ export function generateSchedule(staff, settings, holidays, targetMonth, shifts)
         isHoliday,
       })
       assignedToday++
+
+      // Check if member is now depleted after this assignment
+      const monthlyCapacity = getMonthlyCapacity(member, settings, days.length)
+      const totalUsed = getTotalHoursAssigned(member.id, assignments)
+      if (totalUsed >= monthlyCapacity) {
+        depletedStaff.add(member.id)
+      }
     }
 
-    if (
+    const dayLabel = DAY_LABELS[dayOfWeek]
+    if (assignedToday === 0) {
+      warnings.push(
+        `⚠️ ${dayLabel} ${dateStr}: Sin personal asignado. Considere agregar más colaboradores o ajustar la configuración.`
+      )
+    } else if (
       !omit.minColaboradoresPorDia &&
       assignedToday < settings.minColaboradoresPorDia
     ) {
       warnings.push(
-        `${dateStr}: Solo ${assignedToday}/${settings.minColaboradoresPorDia} colaboradores disponibles`
+        `${dayLabel} ${dateStr}: Solo ${assignedToday}/${settings.minColaboradoresPorDia} colaboradores asignados`
       )
     }
+  }
+
+  // Summary warning about depleted staff
+  if (depletedStaff.size > 0) {
+    const depletedNames = staff
+      .filter((s) => depletedStaff.has(s.id))
+      .map((s) => s.nombre)
+    warnings.push(
+      `ℹ️ ${depletedNames.length} colaborador(es) alcanzaron su capacidad máxima mensual: ${depletedNames.join(', ')}`
+    )
   }
 
   return { assignments, warnings }

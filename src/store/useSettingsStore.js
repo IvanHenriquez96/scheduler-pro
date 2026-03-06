@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS = {
   minDescansoEntreJornadas: 12,
   maxHorasDiarias: 10,
   minColaboradoresPorDia: 2,
+  maxColaboradoresPorDia: 4,
   maxDomingosAlMes: 2,
   minMinutosAlmuerzo: 30,
   maxDiasTrabajoSemana: 6,
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS = {
     maxDomingosAlMes: false,
     maxDiasTrabajoSemana: false,
     minColaboradoresPorDia: false,
+    maxColaboradoresPorDia: false,
     minMinutosAlmuerzo: false,
   },
 }
@@ -30,7 +32,22 @@ export const useSettingsStore = create(
         })),
       resetSettings: () => set({ settings: { ...DEFAULT_SETTINGS } }),
     }),
-    { name: 'scheduler-pro-settings' }
+    {
+      name: 'scheduler-pro-settings',
+      merge: (persisted, current) => {
+        const merged = { ...current, ...persisted }
+        // Ensure new default fields are present in persisted settings
+        merged.settings = {
+          ...DEFAULT_SETTINGS,
+          ...merged.settings,
+          omitirReglas: {
+            ...DEFAULT_SETTINGS.omitirReglas,
+            ...(merged.settings?.omitirReglas || {}),
+          },
+        }
+        return merged
+      },
+    }
   )
 )
 
