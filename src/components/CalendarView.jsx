@@ -7,6 +7,7 @@ import { addMonths, format } from 'date-fns'
 import { useScheduleStore } from '../store/useScheduleStore'
 import { useStaffStore } from '../store/useStaffStore'
 import { useSettingsStore } from '../store/useSettingsStore'
+import { useShiftsStore } from '../store/useShiftsStore'
 import { fetchHolidays } from '../utils/holidays'
 import { generateSchedule } from '../utils/scheduler'
 import { exportScheduleToExcel } from '../utils/exportExcel'
@@ -29,6 +30,7 @@ export default function CalendarView() {
   } = useScheduleStore()
   const { staff } = useStaffStore()
   const { settings } = useSettingsStore()
+  const { shifts } = useShiftsStore()
   const [warnings, setWarnings] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -49,9 +51,13 @@ export default function CalendarView() {
       alert('Debes agregar colaboradores antes de generar la planificación')
       return
     }
+    if (shifts.length === 0) {
+      alert('Debes crear turnos antes de generar la planificación')
+      return
+    }
     setLoading(true)
     const nextMonth = addMonths(new Date(), 1)
-    const result = generateSchedule(staff, settings, holidays, nextMonth)
+    const result = generateSchedule(staff, settings, holidays, nextMonth, shifts)
     setPendingSchedule(result.assignments)
     setWarnings(result.warnings)
     setLoading(false)

@@ -1,19 +1,23 @@
 import { useState } from 'react'
 import { useStaffStore } from '../store/useStaffStore'
+import { useShiftsStore } from '../store/useShiftsStore'
 import StaffModal from './StaffModal'
-
-const SHIFT_LABELS = {
-  any: 'Cualquiera',
-  morning: 'Mañana',
-  afternoon: 'Tarde',
-  night: 'Noche',
-  weekends: 'Fines de Semana',
-}
 
 export default function StaffList() {
   const { staff, addStaff, updateStaff, removeStaff } = useStaffStore()
+  const { shifts } = useShiftsStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
+
+  const shiftMap = Object.fromEntries(shifts.map((s) => [s.id, s]))
+
+  const getShiftNames = (turnosAsignados) => {
+    if (!turnosAsignados || turnosAsignados.length === 0) return 'Cualquier turno'
+    return turnosAsignados
+      .map((id) => shiftMap[id]?.nombre)
+      .filter(Boolean)
+      .join(', ') || 'Cualquier turno'
+  }
 
   const handleSave = (data) => {
     if (editingMember) {
@@ -76,8 +80,10 @@ export default function StaffList() {
                 <div className="flex gap-4 mt-1 text-sm text-gray-500">
                   <span>{member.rol || 'Sin rol'}</span>
                   <span>{member.horasContrato}h/semana</span>
-                  <span>{SHIFT_LABELS[member.restriccionTurno] || 'Cualquiera'}</span>
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Turnos: {getShiftNames(member.turnosAsignados)}
+                </p>
               </div>
               <div className="flex gap-2">
                 <button

@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import SettingsPanel from './components/SettingsPanel'
 import StaffList from './components/StaffList'
+import ShiftList from './components/ShiftList'
 import CalendarView from './components/CalendarView'
 
 const TABS = [
   { id: 'calendar', label: 'Calendario' },
+  { id: 'shifts', label: 'Turnos' },
   { id: 'staff', label: 'Staff' },
   { id: 'settings', label: 'Configuración' },
 ]
@@ -39,6 +41,7 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {activeTab === 'calendar' && <CalendarView />}
+        {activeTab === 'shifts' && <ShiftList />}
         {activeTab === 'staff' && <StaffList />}
         {activeTab === 'settings' && <SettingsPanel />}
       </main>

@@ -9,7 +9,15 @@ const DEFAULT_SETTINGS = {
   maxDomingosAlMes: 2,
   minMinutosAlmuerzo: 30,
   maxDiasTrabajoSemana: 6,
-  omitirReglas: false,
+  omitirReglas: {
+    maxHorasSemanales: false,
+    minDescansoEntreJornadas: false,
+    maxHorasDiarias: false,
+    maxDomingosAlMes: false,
+    maxDiasTrabajoSemana: false,
+    minColaboradoresPorDia: false,
+    minMinutosAlmuerzo: false,
+  },
 }
 
 export const useSettingsStore = create(

@@ -5,19 +5,11 @@ import {
   getDay,
   addHours,
   isBefore,
-  startOfWeek,
-  endOfWeek,
   isSameWeek,
   format,
   isSameMonth,
   parseISO,
 } from 'date-fns'
-
-const SHIFT_DEFINITIONS = {
-  morning: { label: 'Mañana', start: 8, end: 14, hours: 6 },
-  afternoon: { label: 'Tarde', start: 14, end: 20, hours: 6 },
-  night: { label: 'Noche', start: 20, end: 2, hours: 6 },
-}
 
 const DAY_NAMES = [
   'domingo',
@@ -78,34 +70,25 @@ function getDaysWorkedInWeek(staffId, assignments, date) {
   return uniqueDays.size
 }
 
-function isAvailable(member, dayOfWeek, shiftType) {
+function isAvailableForShift(member, dayOfWeek, shift) {
   if (!member.disponibilidad || member.disponibilidad.length === 0) return true
   const dayName = DAY_NAMES[dayOfWeek]
   const dayAvailability = member.disponibilidad.find(
     (d) => d.dia === dayName
   )
   if (!dayAvailability) return false
-
-  const shift = SHIFT_DEFINITIONS[shiftType]
   return (
-    dayAvailability.inicio <= shift.start && dayAvailability.fin >= shift.end
+    dayAvailability.inicio <= shift.horaInicio &&
+    dayAvailability.fin >= shift.horaFin
   )
 }
 
-function matchesShiftPreference(member, shiftType) {
-  if (!member.restriccionTurno || member.restriccionTurno === 'any') return true
-  if (member.restriccionTurno === 'morning' && shiftType === 'morning')
-    return true
-  if (member.restriccionTurno === 'afternoon' && shiftType === 'afternoon')
-    return true
-  if (member.restriccionTurno === 'night' && shiftType === 'night') return true
-  if (member.restriccionTurno === 'weekends') {
-    return true
-  }
-  return false
+function canWorkShift(member, shift) {
+  if (!member.turnosAsignados || member.turnosAsignados.length === 0) return true
+  return member.turnosAsignados.includes(shift.id)
 }
 
-export function generateSchedule(staff, settings, holidays, targetMonth) {
+export function generateSchedule(staff, settings, holidays, targetMonth, shifts) {
   const year = targetMonth.getFullYear()
   const month = targetMonth.getMonth()
   const monthStart = startOfMonth(new Date(year, month))
@@ -115,6 +98,7 @@ export function generateSchedule(staff, settings, holidays, targetMonth) {
   const holidayDates = new Set(holidays.map((h) => h.date))
   const assignments = []
   const warnings = []
+  const omit = settings.omitirReglas || {}
 
   for (const day of days) {
     const dateStr = format(day, 'yyyy-MM-dd')
@@ -122,65 +106,62 @@ export function generateSchedule(staff, settings, holidays, targetMonth) {
     const isHoliday = holidayDates.has(dateStr)
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
 
-    const shiftsToFill = ['morning', 'afternoon']
+    for (const shift of shifts) {
+      if (shift.tipo === 'weekends' && !isWeekend && !isHoliday) continue
 
-    for (const shiftType of shiftsToFill) {
-      const shift = SHIFT_DEFINITIONS[shiftType]
       const shiftStart = new Date(day)
-      shiftStart.setHours(shift.start, 0, 0, 0)
+      shiftStart.setHours(shift.horaInicio, 0, 0, 0)
       const shiftEnd = new Date(day)
-      shiftEnd.setHours(shift.end, 0, 0, 0)
-      if (shift.end < shift.start) {
+      shiftEnd.setHours(shift.horaFin, 0, 0, 0)
+      if (shift.horaFin <= shift.horaInicio) {
         shiftEnd.setDate(shiftEnd.getDate() + 1)
       }
 
       const candidates = staff.filter((member) => {
-        if (settings.omitirReglas) return true
+        if (!canWorkShift(member, shift)) return false
 
-        const lastEnd = getLastShiftEnd(member.id, assignments)
-        if (
-          lastEnd &&
-          isBefore(
-            shiftStart,
-            addHours(lastEnd, settings.minDescansoEntreJornadas)
-          )
-        ) {
-          return false
-        }
-
-        if (
-          dayOfWeek === 0 &&
-          getSundaysWorked(member.id, assignments, day) >=
-            settings.maxDomingosAlMes
-        ) {
-          return false
-        }
-
-        const weeklyHours = getWeeklyHours(member.id, assignments, day)
-        const memberMax = member.horasContrato || settings.maxHorasSemanales
-        if (weeklyHours + shift.hours > memberMax) {
-          return false
-        }
-
-        if (
-          getDaysWorkedInWeek(member.id, assignments, day) >=
-          settings.maxDiasTrabajoSemana
-        ) {
-          return false
-        }
-
-        if (!isAvailable(member, dayOfWeek, shiftType)) {
-          return false
-        }
-
-        if (!matchesShiftPreference(member, shiftType)) {
+        if (!omit.minDescansoEntreJornadas) {
+          const lastEnd = getLastShiftEnd(member.id, assignments)
           if (
-            member.restriccionTurno === 'weekends' &&
-            !isWeekend &&
-            !isHoliday
+            lastEnd &&
+            isBefore(
+              shiftStart,
+              addHours(lastEnd, settings.minDescansoEntreJornadas)
+            )
           ) {
             return false
           }
+        }
+
+        if (!omit.maxDomingosAlMes) {
+          if (
+            dayOfWeek === 0 &&
+            getSundaysWorked(member.id, assignments, day) >=
+              settings.maxDomingosAlMes
+          ) {
+            return false
+          }
+        }
+
+        if (!omit.maxHorasSemanales) {
+          const weeklyHours = getWeeklyHours(member.id, assignments, day)
+          const memberMax = member.horasContrato || settings.maxHorasSemanales
+          if (weeklyHours + shift.horas > memberMax) {
+            return false
+          }
+        }
+
+        if (!omit.maxDiasTrabajoSemana) {
+          if (
+            getDaysWorkedInWeek(member.id, assignments, day) >=
+            settings.maxDiasTrabajoSemana
+          ) {
+            return false
+          }
+        }
+
+        if (!isAvailableForShift(member, dayOfWeek, shift)) {
+          return false
         }
 
         return true
@@ -192,9 +173,12 @@ export function generateSchedule(staff, settings, holidays, targetMonth) {
         settings.minColaboradoresPorDia
       )
 
-      if (toAssign < settings.minColaboradoresPorDia) {
+      if (
+        !omit.minColaboradoresPorDia &&
+        toAssign < settings.minColaboradoresPorDia
+      ) {
         warnings.push(
-          `${dateStr} (${shift.label}): Solo ${toAssign}/${settings.minColaboradoresPorDia} colaboradores disponibles`
+          `${dateStr} (${shift.nombre}): Solo ${toAssign}/${settings.minColaboradoresPorDia} colaboradores disponibles`
         )
       }
 
@@ -204,11 +188,11 @@ export function generateSchedule(staff, settings, holidays, targetMonth) {
           staffId: shuffled[i].id,
           staffName: shuffled[i].nombre,
           date: dateStr,
-          shiftType,
-          shiftLabel: shift.label,
+          shiftType: shift.id,
+          shiftLabel: shift.nombre,
           startTime: shiftStart.toISOString(),
           endTime: shiftEnd.toISOString(),
-          hours: shift.hours,
+          hours: shift.horas,
           isHoliday,
         })
       }
@@ -217,5 +201,3 @@ export function generateSchedule(staff, settings, holidays, targetMonth) {
 
   return { assignments, warnings }
 }
-
-export { SHIFT_DEFINITIONS }

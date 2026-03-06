@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useShiftsStore } from '../store/useShiftsStore'
 
 const DAYS = [
   { key: 'lunes', label: 'Lunes' },
@@ -10,35 +11,44 @@ const DAYS = [
   { key: 'domingo', label: 'Domingo' },
 ]
 
-const SHIFT_OPTIONS = [
-  { value: 'any', label: 'Cualquiera' },
-  { value: 'morning', label: 'Mañana' },
-  { value: 'afternoon', label: 'Tarde' },
-  { value: 'night', label: 'Noche' },
-  { value: 'weekends', label: 'Solo Fines de Semana/Feriados' },
-]
-
 const EMPTY_MEMBER = {
   nombre: '',
   rol: '',
   horasContrato: 42,
-  restriccionTurno: 'any',
+  turnosAsignados: [],
   esUniversitario: false,
   disponibilidad: [],
 }
 
 export default function StaffModal({ isOpen, onClose, onSave, member }) {
   const [form, setForm] = useState(EMPTY_MEMBER)
+  const { shifts } = useShiftsStore()
 
   useEffect(() => {
     if (member) {
-      setForm({ ...EMPTY_MEMBER, ...member })
+      setForm({
+        ...EMPTY_MEMBER,
+        ...member,
+        turnosAsignados: member.turnosAsignados || [],
+      })
     } else {
       setForm(EMPTY_MEMBER)
     }
   }, [member, isOpen])
 
   if (!isOpen) return null
+
+  const toggleShift = (shiftId) => {
+    setForm((prev) => {
+      const has = prev.turnosAsignados.includes(shiftId)
+      return {
+        ...prev,
+        turnosAsignados: has
+          ? prev.turnosAsignados.filter((id) => id !== shiftId)
+          : [...prev.turnosAsignados, shiftId],
+      }
+    })
+  }
 
   const handleAvailabilityChange = (dayKey, field, value) => {
     setForm((prev) => {
@@ -129,41 +139,72 @@ export default function StaffModal({ isOpen, onClose, onSave, member }) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Horas contrato semanal
-                </label>
-                <input
-                  type="number"
-                  value={form.horasContrato}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      horasContrato: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Restricción de turno
-                </label>
-                <select
-                  value={form.restriccionTurno}
-                  onChange={(e) =>
-                    setForm({ ...form, restriccionTurno: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-                >
-                  {SHIFT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Horas contrato semanal
+              </label>
+              <input
+                type="number"
+                value={form.horasContrato}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    horasContrato: parseInt(e.target.value) || 0,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Turnos asignados
+              </label>
+              {shifts.length === 0 ? (
+                <p className="text-sm text-gray-400 p-3 bg-gray-50 rounded-lg">
+                  No hay turnos creados. Ve a la pestaña Turnos para crear
+                  algunos.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {shifts.map((shift) => {
+                    const isSelected = form.turnosAsignados.includes(shift.id)
+                    return (
+                      <label
+                        key={shift.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                          isSelected
+                            ? 'border-primary bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleShift(shift.id)}
+                          className="h-4 w-4 rounded"
+                        />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-gray-800">
+                            {shift.nombre}
+                          </span>
+                          <span className="text-xs text-gray-500 ml-2">
+                            {String(shift.horaInicio).padStart(2, '0')}:00 -{' '}
+                            {String(shift.horaFin).padStart(2, '0')}:00 (
+                            {shift.horas}h)
+                          </span>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+              {form.turnosAsignados.length === 0 && shifts.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Si no seleccionas ninguno, el colaborador podrá ser asignado a
+                  cualquier turno.
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
