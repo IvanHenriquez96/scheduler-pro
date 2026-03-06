@@ -10,6 +10,7 @@ import {
   isSameMonth,
   parseISO,
 } from 'date-fns'
+import { FULLTIME_SHIFT_ID } from '../store/useShiftsStore'
 
 const DAY_NAMES = [
   'domingo',
@@ -21,13 +22,11 @@ const DAY_NAMES = [
   'sabado',
 ]
 
-function shuffle(array) {
-  const arr = [...array]
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
-  }
-  return arr
+function getTotalDaysAssigned(staffId, assignments) {
+  const uniqueDays = new Set(
+    assignments.filter((a) => a.staffId === staffId).map((a) => a.date)
+  )
+  return uniqueDays.size
 }
 
 function getWeeklyHours(staffId, assignments, date) {
@@ -83,8 +82,10 @@ function isAvailableForShift(member, dayOfWeek, shift) {
   )
 }
 
-function canWorkShift(member, shift) {
-  if (!member.turnosAsignados || member.turnosAsignados.length === 0) return true
+function canWorkShift(member, shift, fulltimeShiftId) {
+  if (!member.turnosAsignados || member.turnosAsignados.length === 0) {
+    return shift.id === fulltimeShiftId
+  }
   return member.turnosAsignados.includes(shift.id)
 }
 
@@ -106,19 +107,22 @@ export function generateSchedule(staff, settings, holidays, targetMonth, shifts)
     const isHoliday = holidayDates.has(dateStr)
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
 
-    for (const shift of shifts) {
-      if (shift.tipo === 'weekends' && !isWeekend && !isHoliday) continue
+    const sorted = [...staff].sort((a, b) => {
+      const aDays = getTotalDaysAssigned(a.id, assignments)
+      const bDays = getTotalDaysAssigned(b.id, assignments)
+      if (aDays !== bDays) return aDays - bDays
+      return Math.random() - 0.5
+    })
+    let assignedToday = 0
 
-      const shiftStart = new Date(day)
-      shiftStart.setHours(shift.horaInicio, 0, 0, 0)
-      const shiftEnd = new Date(day)
-      shiftEnd.setHours(shift.horaFin, 0, 0, 0)
-      if (shift.horaFin <= shift.horaInicio) {
-        shiftEnd.setDate(shiftEnd.getDate() + 1)
-      }
+    for (const member of sorted) {
+      const eligibleShifts = shifts.filter((shift) => {
+        if (shift.tipo === 'weekends' && !isWeekend && !isHoliday) return false
+        if (!canWorkShift(member, shift, FULLTIME_SHIFT_ID)) return false
+        if (!isAvailableForShift(member, dayOfWeek, shift)) return false
 
-      const candidates = staff.filter((member) => {
-        if (!canWorkShift(member, shift)) return false
+        const shiftStart = new Date(day)
+        shiftStart.setHours(shift.horaInicio, 0, 0, 0)
 
         if (!omit.minDescansoEntreJornadas) {
           const lastEnd = getLastShiftEnd(member.id, assignments)
@@ -160,42 +164,42 @@ export function generateSchedule(staff, settings, holidays, targetMonth, shifts)
           }
         }
 
-        if (!isAvailableForShift(member, dayOfWeek, shift)) {
-          return false
-        }
-
         return true
       })
 
-      const shuffled = shuffle(candidates)
-      const toAssign = Math.min(
-        shuffled.length,
-        settings.minColaboradoresPorDia
+      if (eligibleShifts.length === 0) continue
+
+      const shift = eligibleShifts[0]
+      const shiftStart = new Date(day)
+      shiftStart.setHours(shift.horaInicio, 0, 0, 0)
+      const shiftEnd = new Date(day)
+      shiftEnd.setHours(shift.horaFin, 0, 0, 0)
+      if (shift.horaFin <= shift.horaInicio) {
+        shiftEnd.setDate(shiftEnd.getDate() + 1)
+      }
+
+      assignments.push({
+        id: crypto.randomUUID(),
+        staffId: member.id,
+        staffName: member.nombre,
+        date: dateStr,
+        shiftType: shift.id,
+        shiftLabel: shift.nombre,
+        startTime: shiftStart.toISOString(),
+        endTime: shiftEnd.toISOString(),
+        hours: shift.horas,
+        isHoliday,
+      })
+      assignedToday++
+    }
+
+    if (
+      !omit.minColaboradoresPorDia &&
+      assignedToday < settings.minColaboradoresPorDia
+    ) {
+      warnings.push(
+        `${dateStr}: Solo ${assignedToday}/${settings.minColaboradoresPorDia} colaboradores disponibles`
       )
-
-      if (
-        !omit.minColaboradoresPorDia &&
-        toAssign < settings.minColaboradoresPorDia
-      ) {
-        warnings.push(
-          `${dateStr} (${shift.nombre}): Solo ${toAssign}/${settings.minColaboradoresPorDia} colaboradores disponibles`
-        )
-      }
-
-      for (let i = 0; i < toAssign; i++) {
-        assignments.push({
-          id: crypto.randomUUID(),
-          staffId: shuffled[i].id,
-          staffName: shuffled[i].nombre,
-          date: dateStr,
-          shiftType: shift.id,
-          shiftLabel: shift.nombre,
-          startTime: shiftStart.toISOString(),
-          endTime: shiftEnd.toISOString(),
-          hours: shift.horas,
-          isHoliday,
-        })
-      }
     }
   }
 

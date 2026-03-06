@@ -1,7 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export const FULLTIME_SHIFT_ID = 'default-fulltime'
+
 const DEFAULT_SHIFTS = [
+  {
+    id: FULLTIME_SHIFT_ID,
+    nombre: 'Jornada Completa',
+    tipo: 'fulltime',
+    horaInicio: 8,
+    horaFin: 18,
+    horas: 10,
+  },
   {
     id: 'default-morning',
     nombre: 'Mañana',

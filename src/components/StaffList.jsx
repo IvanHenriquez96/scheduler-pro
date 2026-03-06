@@ -12,7 +12,7 @@ export default function StaffList() {
   const shiftMap = Object.fromEntries(shifts.map((s) => [s.id, s]))
 
   const getShiftNames = (turnosAsignados) => {
-    if (!turnosAsignados || turnosAsignados.length === 0) return 'Cualquier turno'
+    if (!turnosAsignados || turnosAsignados.length === 0) return 'Jornada Completa'
     return turnosAsignados
       .map((id) => shiftMap[id]?.nombre)
       .filter(Boolean)

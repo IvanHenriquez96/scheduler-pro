@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useShiftsStore } from '../store/useShiftsStore'
+import { useShiftsStore, FULLTIME_SHIFT_ID } from '../store/useShiftsStore'
+import { useSettingsStore } from '../store/useSettingsStore'
 
 const TIPO_OPTIONS = [
+  { value: 'fulltime', label: 'Jornada Completa' },
   { value: 'morning', label: 'Mañana' },
   { value: 'afternoon', label: 'Tarde' },
   { value: 'night', label: 'Noche' },
@@ -9,6 +11,7 @@ const TIPO_OPTIONS = [
 ]
 
 const TIPO_LABELS = {
+  fulltime: 'Jornada Completa',
   morning: 'Mañana',
   afternoon: 'Tarde',
   night: 'Noche',
@@ -16,6 +19,7 @@ const TIPO_LABELS = {
 }
 
 const TIPO_BADGE = {
+  fulltime: 'badge-primary',
   morning: 'badge-warning',
   afternoon: 'badge-accent',
   night: 'badge-info',
@@ -156,8 +160,14 @@ function ShiftModal({ isOpen, onClose, onSave, shift }) {
 
 export default function ShiftList() {
   const { shifts, addShift, updateShift, removeShift, resetShifts } = useShiftsStore()
+  const { settings } = useSettingsStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingShift, setEditingShift] = useState(null)
+
+  const fulltimeShift = shifts.find((s) => s.id === FULLTIME_SHIFT_ID)
+  if (fulltimeShift && fulltimeShift.horas !== settings.maxHorasDiarias) {
+    updateShift(FULLTIME_SHIFT_ID, { horas: settings.maxHorasDiarias })
+  }
 
   const handleSave = (data) => {
     if (editingShift) {
@@ -220,13 +230,18 @@ export default function ShiftList() {
                     {String(shift.horaFin).padStart(2, '0')}:00 ({shift.horas}h)
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  {shift.id === FULLTIME_SHIFT_ID && (
+                    <span className="badge badge-soft badge-primary badge-xs">Por defecto</span>
+                  )}
                   <button onClick={() => handleEdit(shift)} className="btn btn-soft btn-secondary btn-xs">
                     Editar
                   </button>
-                  <button onClick={() => removeShift(shift.id)} className="btn btn-soft btn-error btn-xs">
-                    Eliminar
-                  </button>
+                  {shift.id !== FULLTIME_SHIFT_ID && (
+                    <button onClick={() => removeShift(shift.id)} className="btn btn-soft btn-error btn-xs">
+                      Eliminar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

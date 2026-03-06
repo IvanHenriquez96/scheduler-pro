@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import SettingsPanel from './components/SettingsPanel'
 import StaffList from './components/StaffList'
 import ShiftList from './components/ShiftList'
@@ -13,6 +13,12 @@ const TABS = [
 
 function App() {
   const [activeTab, setActiveTab] = useState('calendar')
+
+  const handleReset = useCallback(() => {
+    if (!window.confirm('¿Estás seguro? Se eliminarán todos los datos y la app volverá a su estado inicial.')) return
+    localStorage.clear()
+    window.location.reload()
+  }, [])
 
   return (
     <div className="min-h-screen bg-base-200/50">
@@ -38,6 +44,9 @@ function App() {
                 <span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
+            <button onClick={handleReset} className="btn btn-sm btn-soft btn-error" title="Reiniciar app">
+              <span className="icon-[tabler--refresh] size-4" />
+            </button>
           </div>
         </div>
       </nav>

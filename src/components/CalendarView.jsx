@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { addMonths } from 'date-fns'
+import { addMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns'
 import { useScheduleStore } from '../store/useScheduleStore'
 import { useStaffStore } from '../store/useStaffStore'
 import { useSettingsStore } from '../store/useSettingsStore'
@@ -103,6 +103,53 @@ export default function CalendarView() {
     return evts
   }, [displayData, holidays, staffColorMap])
 
+  const coverageAnalysis = useMemo(() => {
+    if (staff.length === 0 || shifts.length === 0) return null
+
+    const nextMonth = addMonths(new Date(), 1)
+    const mStart = startOfMonth(nextMonth)
+    const mEnd = endOfMonth(nextMonth)
+    const monthDays = eachDayOfInterval({ start: mStart, end: mEnd })
+    const totalDays = monthDays.length
+
+    const regularShifts = shifts.filter((s) => s.tipo !== 'weekends')
+    const avgShiftHours =
+      regularShifts.length > 0
+        ? regularShifts.reduce((sum, s) => sum + s.horas, 0) / regularShifts.length
+        : 8
+
+    const minStaffPerDay = settings.minColaboradoresPorDia
+    const totalHoursNeeded = totalDays * minStaffPerDay * avgShiftHours
+
+    const weeksInMonth = totalDays / 7
+    const totalHoursAvailable = staff.reduce((sum, m) => {
+      const weeklyHours = m.horasContrato || settings.maxHorasSemanales
+      return sum + weeklyHours * weeksInMonth
+    }, 0)
+
+    const hoursDifference = totalHoursAvailable - totalHoursNeeded
+    const isDeficit = hoursDifference < 0
+
+    const avgContractHours =
+      staff.reduce((sum, m) => sum + (m.horasContrato || settings.maxHorasSemanales), 0) /
+      staff.length
+    const extraStaffNeeded = isDeficit
+      ? Math.ceil(Math.abs(hoursDifference) / (avgContractHours * weeksInMonth))
+      : 0
+
+    return {
+      totalDays,
+      minStaffPerDay,
+      avgShiftHours: Math.round(avgShiftHours * 10) / 10,
+      totalHoursNeeded: Math.round(totalHoursNeeded),
+      totalHoursAvailable: Math.round(totalHoursAvailable),
+      hoursDifference: Math.round(hoursDifference),
+      isDeficit,
+      extraStaffNeeded,
+      staffCount: staff.length,
+    }
+  }, [staff, shifts, settings])
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
@@ -124,6 +171,46 @@ export default function CalendarView() {
           </button>
         </div>
       </div>
+
+      {coverageAnalysis && (
+        <div className={`alert ${coverageAnalysis.isDeficit ? 'alert-soft alert-error' : 'alert-soft alert-success'} mb-4`} role="alert">
+          <span className={`${coverageAnalysis.isDeficit ? 'icon-[tabler--alert-triangle]' : 'icon-[tabler--circle-check]'} size-6 shrink-0`} />
+          <div className="flex-1">
+            <h5 className="font-semibold">
+              Análisis de Cobertura — {coverageAnalysis.isDeficit ? 'Déficit de personal' : 'Cobertura suficiente'}
+            </h5>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+              <div>
+                <p className="text-xs opacity-70">Días del mes</p>
+                <p className="text-lg font-bold">{coverageAnalysis.totalDays}</p>
+              </div>
+              <div>
+                <p className="text-xs opacity-70">Horas necesarias</p>
+                <p className="text-lg font-bold">{coverageAnalysis.totalHoursNeeded}h</p>
+              </div>
+              <div>
+                <p className="text-xs opacity-70">Horas disponibles</p>
+                <p className="text-lg font-bold">{coverageAnalysis.totalHoursAvailable}h</p>
+              </div>
+              <div>
+                <p className="text-xs opacity-70">Diferencia</p>
+                <p className={`text-lg font-bold ${coverageAnalysis.isDeficit ? 'text-error' : 'text-success'}`}>
+                  {coverageAnalysis.hoursDifference > 0 ? '+' : ''}{coverageAnalysis.hoursDifference}h
+                </p>
+              </div>
+            </div>
+            <p className="text-sm mt-2">
+              {coverageAnalysis.minStaffPerDay} colaborador{coverageAnalysis.minStaffPerDay > 1 ? 'es' : ''}/día × {coverageAnalysis.avgShiftHours}h promedio × {coverageAnalysis.totalDays} días = {coverageAnalysis.totalHoursNeeded}h necesarias.
+              {' '}Tienes {coverageAnalysis.staffCount} colaborador{coverageAnalysis.staffCount > 1 ? 'es' : ''} con {coverageAnalysis.totalHoursAvailable}h disponibles.
+            </p>
+            {coverageAnalysis.isDeficit && (
+              <p className="text-sm font-semibold mt-1">
+                Necesitas contratar al menos {coverageAnalysis.extraStaffNeeded} colaborador{coverageAnalysis.extraStaffNeeded > 1 ? 'es' : ''} más, o reducir el mínimo de colaboradores por día en Configuración.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {pendingSchedule && (
         <div className="alert alert-soft alert-info mb-4" role="alert">

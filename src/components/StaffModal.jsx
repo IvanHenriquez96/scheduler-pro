@@ -186,7 +186,7 @@ export default function StaffModal({ isOpen, onClose, onSave, member }) {
                 )}
                 {form.turnosAsignados.length === 0 && shifts.length > 0 && (
                   <p className="helper-text mt-1">
-                    Si no seleccionas ninguno, podrá ser asignado a cualquier turno.
+                    Si no seleccionas ninguno, se asignará a Jornada Completa.
                   </p>
                 )}
               </div>
